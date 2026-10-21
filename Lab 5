@@ -1,0 +1,22 @@
+$dc = "Manjot.powershell.com"
+$usr = "MANJOT\Administrator"
+
+$pw = Read-Host "Enter domain admin password" -AsSecureString
+$creds = New-Object System.Management.Automation.PSCredential($usr,$pw)
+
+$pc = Import-Csv -Path "C:\Computers.csv"
+$report = @()
+
+foreach ($computer in $pc) {
+    $name = $computer.ComputerName
+    $localCreds = Get-Credential -Message "Enter local administrator credentials for $name"
+
+    Add-Computer -ComputerName $name -LocalCredential $localCreds -DomainName $dc -Credential $creds -Restart -Force -Verbose
+
+    $report += [PSCustomObject]@{
+        ComputerName = $name
+        Status = "Join command attempted"
+    }
+}
+
+$report | Export-Csv -Path "C:\Join-Report.csv" -NoTypeInformation
