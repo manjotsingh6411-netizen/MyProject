@@ -20,3 +20,14 @@ foreach ($computer in $pc) {
 }
 
 $report | Export-Csv -Path "C:\Join-Report.csv" -NoTypeInformation
+
+
+or 
+
+$dc = "Manjot.powershell.local" # Specify the domain to join.
+$pw = "<Passwordplaceholder>" | ConvertToString -asPlainText -Force 
+$usr = "$dc\manjot" 
+$pc = Get-Content -Path C:\Computers.txt 
+$creds = New-Object System.Management.Automation.PSCredential($usr,$pw)
+Add-Computer -ComputerName $pc -LocalCredential $pc\admin -DomainName $dc -Credential $creds -restart -force -verbose 
+
