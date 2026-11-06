@@ -1,0 +1,99 @@
+<#
+.SYNOPSIS
+    Checks whether specified critical Windows processes are running.
+.DESCRIPTION
+    This script defines a reusable function to check critical
+    Windows processes, validate input, handle errors, log missing
+    processes, create custom objects, export Excel reports,
+    and display a summary.
+.PARAMETER Processes
+    Specifies an array of process names to check.
+.EXAMPLE
+    .\Manjot-lab7.ps1
+.EXAMPLE
+    .\Manjot-lab7.ps1 -Processes "lsass","dns","spoolsv","w3wp"
+.NOTES
+    Author: Manjot Singh
+    Created: 2026-11-05
+    Version: 1.0
+    Last Modified: 2026-11-05
+    Requirement: ImportExcel module for Excel export.
+.LINK
+    https://github.com/manjotsingh6411-netizen/MyProject.git 
+#>
+# Parameters
+param (
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [ValidateCount(1,20)]
+    [string[]]$Processes = @("lsass","dns","spoolsv","w3wp")
+)
+
+
+# Functions
+function Test-CriticalProcesses {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateCount(1,20)]
+        [string[]]$Processes
+    )
+    $Results = @()
+    $Found = 0
+    $Missing = 0
+    $LogFile = "$PSScriptRoot\MissingProcesses.txt"
+    $ReportFile = "$PSScriptRoot\ProcessReport.xlsx"
+    
+    Write-Verbose "Starting critical process check..."
+    foreach ($Process in $Processes) {
+        Write-Verbose "Checking process: $Process"
+        try {
+            Get-Process -Name $Process -ErrorAction Stop
+            Write-Host "$Process is running." -ForegroundColor Green
+            $Status = "Found"
+            $Found++
+        }
+        catch {
+            Write-Host "WARNING: $Process was not found." -ForegroundColor Yellow
+            Add-Content -Path $LogFile -Value "$Process is missing - $(Get-Date)"
+            $Status = "Missing"
+            $Missing++
+        }
+        # Create Custom PowerShell Object
+        $Results += [PSCustomObject]@{
+            ProcessName = $Process
+            Status      = $Status
+    CheckTime   = Get-Date
+        }
+    }
+    # Display Summary
+    $Total = $Processes.Count
+
+    Write-Host "`n== Process Check Summary ==" -ForegroundColor Cyan
+    Write-Host "Processes checked: $Total" -ForegroundColor White
+    Write-Host "Processes found: $Found" -ForegroundColor Green
+    Write-Host "Processes missing: $Missing" -ForegroundColor Yellow
+    Write-Host "==" -ForegroundColor Cyan
+
+    # Export Results to Excel
+    try {
+        Import-Module ImportExcel -ErrorAction Stop
+        $Results | Export-Excel -Path $ReportFile `
+            -AutoSize `
+            -WorksheetName "Process Results" `
+            -ClearSheet `
+            -ErrorAction Stop
+        Write-Host "`nExcel report successfully saved: $ReportFile" -ForegroundColor Green
+    }
+    catch {
+        Write-Warning "Excel report could not be generated."
+        Write-Host "Make sure ImportExcel is installed." -ForegroundColor Yellow
+        Write-Host "Install it using: Install-Module ImportExcel -Scope CurrentUser" -ForegroundColor Yellow
+    }
+    Write-Verbose "Process checking completed."
+    return $Results
+}
+# Execution Code
+Write-Host "`nStarting Critical Process Monitoring..." -ForegroundColor Cyan
+Test-CriticalProcesses -Processes $Processes -Verbose
